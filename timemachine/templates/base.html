@@ -1,0 +1,20 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}Wikipedia Time Machine{% endblock %}</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+  <header>
+    <h1><a href="{{ url_for('index') }}">Wikipedia Time Machine</a></h1>
+    <nav>
+      <a href="{{ url_for('index', title=title) }}" class="{{ 'active' if request.endpoint == 'index' }}">Read</a>
+      <a href="{{ url_for('compare', title=title) }}" class="{{ 'active' if request.endpoint == 'compare' }}">Compare</a>
+    </nav>
+    {% block form %}{% endblock %}
+  </header>
+  {% block main %}{% endblock %}
+</body>
+</html>

@@ -1,35 +1,41 @@
-"""The time machine page: pick an article and a moment, see the article as it was.
+"""The time machine pages.
+
+    /       pick an article and a moment, see the article as it was
+    /diff   pick an article and two moments, see what changed in between
 
 Run:
     flask --app timemachine.web run
 then open http://127.0.0.1:5000
 """
 
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
-import mwparserfromhell
 from flask import Flask, render_template, request
 
 from timemachine import queries
 from timemachine.db import connect
+from timemachine.render import diff, to_paragraphs
 
 app = Flask(__name__)
 
 
-def parse_moment(value: str | None) -> datetime:
+def parse_moment(value: str | None, default: datetime | None = None) -> datetime:
     """Accepts what <input type="datetime-local"> sends, e.g. 2006-06-01T12:00. Defaults to now."""
     for fmt in ("%Y-%m-%dT%H:%M", "%Y-%m-%dT%H:%M:%S", "%Y-%m-%d"):
         try:
             return datetime.strptime(value or "", fmt)
         except ValueError:
             pass
-    return datetime.now(timezone.utc).replace(tzinfo=None, microsecond=0)
+    return default or datetime.now(timezone.utc).replace(tzinfo=None, microsecond=0)
 
 
-def to_plain_text(wikitext: str) -> list[str]:
-    """Wikitext -> readable paragraphs. Templates such as infoboxes are dropped."""
-    text = mwparserfromhell.parse(wikitext).strip_code(normalize=True, collapse=True)
-    return [p.strip() for p in text.split("\n\n") if p.strip()]
+def sql_time(moment: datetime) -> str:
+    return moment.strftime("%Y-%m-%d %H:%M:%S")
+
+
+def list_titles(cur) -> list[str]:
+    cur.execute(queries.LIST_ARTICLES)
+    return [row["title"] for row in cur.fetchall()]
 
 
 @app.route("/")
@@ -39,13 +45,12 @@ def index():
     conn = connect()
     try:
         cur = conn.cursor(dictionary=True)
-        cur.execute(queries.LIST_ARTICLES)
-        titles = [row["title"] for row in cur.fetchall()]
+        titles = list_titles(cur)
         title = request.args.get("title") or (titles[0] if titles else None)
 
         version, versions = None, []
         if title:
-            cur.execute(queries.ARTICLE_AS_OF, (moment.strftime("%Y-%m-%d %H:%M:%S"), title))
+            cur.execute(queries.ARTICLE_AS_OF, (sql_time(moment), title))
             version = cur.fetchone()
             cur.execute(queries.ARTICLE_VERSIONS, (title,))
             versions = cur.fetchall()
@@ -58,7 +63,43 @@ def index():
         title=title,
         moment=moment,
         version=version,
-        paragraphs=to_plain_text(version["content"]) if version else [],
+        paragraphs=to_paragraphs(version["content"]) if version else [],
         versions=versions,
         query=queries.ARTICLE_AS_OF.strip(),
+    )
+
+
+@app.route("/diff")
+def compare():
+    now = parse_moment(None)
+    to_moment = parse_moment(request.args.get("to"), now)
+    from_moment = parse_moment(request.args.get("from"), to_moment - timedelta(days=365))
+    if from_moment > to_moment:
+        from_moment, to_moment = to_moment, from_moment
+
+    conn = connect()
+    try:
+        cur = conn.cursor(dictionary=True)
+        titles = list_titles(cur)
+        title = request.args.get("title") or (titles[0] if titles else None)
+        row = None
+        if title:
+            cur.execute(queries.ARTICLE_AT_TWO_MOMENTS, (sql_time(from_moment), sql_time(to_moment), title))
+            row = cur.fetchone()
+    finally:
+        conn.close()
+
+    result = None
+    if row and row["old_content"] is not None and row["new_content"] is not None:
+        result = diff(row["old_content"], row["new_content"])
+
+    return render_template(
+        "diff.html",
+        titles=titles,
+        title=title,
+        from_moment=from_moment,
+        to_moment=to_moment,
+        row=row,
+        result=result,
+        query=queries.ARTICLE_AT_TWO_MOMENTS.strip(),
     )

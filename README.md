@@ -32,7 +32,9 @@ Requirements: MariaDB 12.3 (11.8 or later should also work) and Python 3.11 or l
    flask --app timemachine.web run # open http://127.0.0.1:5000
    ```
 
-Try **Pluto** around 24 August 2006, the day it stopped being a planet.
+Try **Pluto** around 24 August 2006, the day it stopped being a planet. Then open **Compare** to see June 2006 against January 2007: "the traditional ninth planet" turns into "the second-largest known dwarf planet".
+
+The Compare page runs a single query that reads `page_content` at two moments and joins it to itself. See `ARTICLE_AT_TWO_MOMENTS` in [`timemachine/queries.py`](timemachine/queries.py).
 
 ## Data
 
@@ -80,13 +82,15 @@ sql/examples.sql          queries to paste into the mariadb client
 timemachine/fetch.py      MediaWiki API -> data/raw/*.json
 timemachine/load.py       data/raw -> MariaDB, replaying history with real timestamps
 timemachine/queries.py    every SQL statement the web app uses
-timemachine/web.py        Flask app
-timemachine/templates/    the page
+timemachine/render.py     wikitext -> readable paragraphs, and the paragraph/word diff
+timemachine/web.py        Flask app: / (read as of a moment) and /diff (compare two moments)
+timemachine/templates/    the pages
+timemachine/static/       stylesheet
 ```
 
 ## Roadmap
 
-- [ ] Show a diff between two chosen moments
+- [x] Show a diff between two chosen moments
 - [ ] Measure how the versioned table grows (rows and bytes per article, current vs history)
 - [ ] `PARTITION BY SYSTEM_TIME` to keep current rows apart from history, and measure the effect
 - [ ] Alternatives 3 and 4 above, compared

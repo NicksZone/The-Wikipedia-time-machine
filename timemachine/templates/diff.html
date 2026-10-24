@@ -1,0 +1,63 @@
+{% extends "base.html" %}
+
+{% block title %}Compare · Wikipedia Time Machine{% endblock %}
+
+{% block form %}
+<form method="get">
+  <label>Article
+    <select name="title">
+      {% for t in titles %}<option {% if t == title %}selected{% endif %}>{{ t }}</option>{% endfor %}
+    </select>
+  </label>
+  <label>From (UTC)
+    <input type="datetime-local" name="from" value="{{ from_moment.strftime('%Y-%m-%dT%H:%M') }}">
+  </label>
+  <label>To (UTC)
+    <input type="datetime-local" name="to" value="{{ to_moment.strftime('%Y-%m-%dT%H:%M') }}">
+  </label>
+  <button type="submit">Compare</button>
+</form>
+{% endblock %}
+
+{% block main %}
+<main class="single">
+  <article>
+    <h2>{{ title }}</h2>
+    {% if not row %}
+      <p>No such article.</p>
+    {% elif row.old_content is none or row.new_content is none %}
+      <p>The article did not exist yet on {{ (from_moment if row.old_content is none else to_moment).strftime('%d %B %Y') }}, as far as the loaded history goes. Pick a later date.</p>
+    {% elif row.old_rev_id == row.new_rev_id %}
+      <p>Both moments show the same stored version (revision {{ row.new_rev_id }}, live from {{ row.new_start.strftime('%d %b %Y') }}), so nothing changed in between.</p>
+    {% else %}
+      <div class="meta">
+        From revision <a href="https://en.wikipedia.org/w/index.php?oldid={{ row.old_rev_id }}">{{ row.old_rev_id }}</a>
+        (live from {{ row.old_start.strftime('%d %b %Y') }}) to revision
+        <a href="https://en.wikipedia.org/w/index.php?oldid={{ row.new_rev_id }}">{{ row.new_rev_id }}</a>
+        (live from {{ row.new_start.strftime('%d %b %Y') }}).
+      </div>
+      <div class="stats">
+        <span>{{ result.changed }} paragraphs edited</span>
+        <span>{{ result.added }} added</span>
+        <span>{{ result.removed }} removed</span>
+      </div>
+      {% for b in result.blocks %}
+        {% if b.kind == 'same' %}
+          <div class="same">{{ b.count }} unchanged paragraph{{ 's' if b.count != 1 }}</div>
+        {% elif b.kind == 'added' %}
+          <p class="added">{{ b.para.text }}</p>
+        {% elif b.kind == 'removed' %}
+          <p class="removed">{{ b.para.text }}</p>
+        {% else %}
+          <{{ 'h3' if b.heading else 'p' }}>{% for kind, text in b.parts %}{% if kind == 'ins' %}<ins>{{ text }}</ins>{% elif kind == 'del' %}<del>{{ text }}</del>{% else %}{{ text }}{% endif %}{% endfor %}</{{ 'h3' if b.heading else 'p' }}>
+        {% endif %}
+      {% endfor %}
+    {% endif %}
+
+    <details>
+      <summary>The query behind this page: one table, read at two moments, joined to itself</summary>
+      <pre>{{ query }}</pre>
+    </details>
+  </article>
+</main>
+{% endblock %}

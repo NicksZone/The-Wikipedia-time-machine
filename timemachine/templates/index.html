@@ -1,89 +1,59 @@
-<!doctype html>
-<html lang="en">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Wikipedia Time Machine</title>
-  <style>
-    :root { --bg: #fafaf7; --fg: #1d1d1b; --muted: #6b6b66; --line: #ddd9cf; --accent: #9a3412; --panel: #fff; }
-    @media (prefers-color-scheme: dark) {
-      :root { --bg: #161614; --fg: #ecebe6; --muted: #a09f98; --line: #34332f; --accent: #fb923c; --panel: #1f1f1c; }
-    }
-    * { box-sizing: border-box; }
-    body { margin: 0; background: var(--bg); color: var(--fg); font: 16px/1.6 Georgia, serif; }
-    header { padding: 20px 24px; border-bottom: 1px solid var(--line); display: flex; flex-wrap: wrap; gap: 16px; align-items: end; }
-    header h1 { margin: 0 24px 0 0; font-size: 22px; }
-    label { display: flex; flex-direction: column; font: 13px system-ui, sans-serif; color: var(--muted); gap: 4px; }
-    select, input, button { font: 15px system-ui, sans-serif; padding: 6px 8px; border: 1px solid var(--line); border-radius: 6px; background: var(--panel); color: var(--fg); }
-    button { background: var(--accent); color: #fff; border: 0; cursor: pointer; }
-    main { display: grid; grid-template-columns: 1fr 260px; gap: 24px; padding: 24px; max-width: 1200px; margin: 0 auto; }
-    @media (max-width: 800px) { main { grid-template-columns: 1fr; } }
-    .meta { font: 14px system-ui, sans-serif; color: var(--muted); border-left: 3px solid var(--accent); padding-left: 12px; margin-bottom: 20px; }
-    .meta a { color: var(--accent); }
-    article h2 { margin-top: 0; }
-    article p { max-width: 70ch; }
-    aside { font: 13px system-ui, sans-serif; }
-    aside ol { list-style: none; padding: 0; margin: 0; max-height: 70vh; overflow-y: auto; border: 1px solid var(--line); border-radius: 8px; background: var(--panel); }
-    aside li a { display: flex; justify-content: space-between; padding: 6px 10px; color: var(--fg); text-decoration: none; border-bottom: 1px solid var(--line); }
-    aside li a:hover { background: var(--bg); }
-    aside li.current a { background: var(--accent); color: #fff; }
-    details { margin-top: 32px; font: 13px system-ui, sans-serif; }
-    pre { background: var(--panel); border: 1px solid var(--line); padding: 12px; border-radius: 8px; overflow-x: auto; }
-  </style>
-</head>
-<body>
-  <header>
-    <h1>Wikipedia Time Machine</h1>
-    <form method="get" style="display:flex; gap:12px; align-items:end; flex-wrap:wrap">
-      <label>Article
-        <select name="title">
-          {% for t in titles %}<option {% if t == title %}selected{% endif %}>{{ t }}</option>{% endfor %}
-        </select>
-      </label>
-      <label>As of (UTC)
-        <input type="datetime-local" name="at" value="{{ moment.strftime('%Y-%m-%dT%H:%M') }}">
-      </label>
-      <button type="submit">Travel</button>
-    </form>
-  </header>
+{% extends "base.html" %}
 
-  <main>
-    <article>
-      {% if not titles %}
-        <p>No articles loaded yet. Run <code>python -m timemachine.fetch</code> and <code>python -m timemachine.load</code>.</p>
-      {% elif not version %}
-        <h2>{{ title }}</h2>
-        <p>This article did not exist yet on {{ moment.strftime('%d %B %Y') }}, as far as the loaded history goes.</p>
-      {% else %}
-        <h2>{{ title }}</h2>
-        <div class="meta">
-          As it stood on <strong>{{ moment.strftime('%d %B %Y, %H:%M') }}</strong> UTC.<br>
-          This version was live from {{ version.sys_start.strftime('%d %b %Y %H:%M') }}
-          {% if version.sys_end.year < 2100 %}until {{ version.sys_end.strftime('%d %b %Y %H:%M') }}{% else %}and is the current one{% endif %}.<br>
-          Revision <a href="https://en.wikipedia.org/w/index.php?oldid={{ version.rev_id }}">{{ version.rev_id }}</a>
-          by {{ version.editor or "(hidden)" }}{% if version.edit_comment %}: “{{ version.edit_comment }}”{% endif %}
-        </div>
-        {% for p in paragraphs %}<p>{{ p }}</p>{% endfor %}
-      {% endif %}
+{% block form %}
+<form method="get">
+  <label>Article
+    <select name="title">
+      {% for t in titles %}<option {% if t == title %}selected{% endif %}>{{ t }}</option>{% endfor %}
+    </select>
+  </label>
+  <label>As of (UTC)
+    <input type="datetime-local" name="at" value="{{ moment.strftime('%Y-%m-%dT%H:%M') }}">
+  </label>
+  <button type="submit">Travel</button>
+</form>
+{% endblock %}
 
-      <details>
-        <summary>The query behind this page</summary>
-        <pre>{{ query }}</pre>
-      </details>
-    </article>
+{% block main %}
+<main>
+  <article>
+    {% if not titles %}
+      <p>No articles loaded yet. Run <code>python -m timemachine.fetch</code> and <code>python -m timemachine.load</code>.</p>
+    {% elif not version %}
+      <h2>{{ title }}</h2>
+      <p>This article did not exist yet on {{ moment.strftime('%d %B %Y') }}, as far as the loaded history goes.</p>
+    {% else %}
+      <h2>{{ title }}</h2>
+      <div class="meta">
+        As it stood on <strong>{{ moment.strftime('%d %B %Y, %H:%M') }}</strong> UTC.<br>
+        This version was live from {{ version.sys_start.strftime('%d %b %Y %H:%M') }}
+        {% if version.sys_end.year < 2100 %}until {{ version.sys_end.strftime('%d %b %Y %H:%M') }}{% else %}and is the current one{% endif %}.<br>
+        Revision <a href="https://en.wikipedia.org/w/index.php?oldid={{ version.rev_id }}">{{ version.rev_id }}</a>
+        by {{ version.editor or "(hidden)" }}{% if version.edit_comment %}: “{{ version.edit_comment }}”{% endif %}<br>
+        <a href="{{ url_for('compare', title=title, **{'from': moment.strftime('%Y-%m-%dT%H:%M')}) }}">Compare with today →</a>
+      </div>
+      {% for p in paragraphs %}
+        {% if p.heading %}<h3>{{ p.text }}</h3>{% else %}<p>{{ p.text }}</p>{% endif %}
+      {% endfor %}
+    {% endif %}
 
-    <aside>
-      <h3>Stored versions ({{ versions|length }})</h3>
-      <ol>
-        {% for v in versions %}
-          <li {% if version and v.rev_id == version.rev_id %}class="current"{% endif %}>
-            <a href="?title={{ title|urlencode }}&at={{ v.sys_start.strftime('%Y-%m-%dT%H:%M:%S') }}">
-              <span>{{ v.sys_start.strftime('%d %b %Y') }}</span><span>{{ '{:,}'.format(v.bytes) }} B</span>
-            </a>
-          </li>
-        {% endfor %}
-      </ol>
-    </aside>
-  </main>
-</body>
-</html>
+    <details>
+      <summary>The query behind this page</summary>
+      <pre>{{ query }}</pre>
+    </details>
+  </article>
+
+  <aside>
+    <h3>Stored versions ({{ versions|length }})</h3>
+    <ol>
+      {% for v in versions %}
+        <li {% if version and v.rev_id == version.rev_id %}class="current"{% endif %}>
+          <a href="?title={{ title|urlencode }}&at={{ v.sys_start.strftime('%Y-%m-%dT%H:%M:%S') }}">
+            <span>{{ v.sys_start.strftime('%d %b %Y') }}</span><span>{{ '{:,}'.format(v.bytes) }} B</span>
+          </a>
+        </li>
+      {% endfor %}
+    </ol>
+  </aside>
+</main>
+{% endblock %}
