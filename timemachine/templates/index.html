@@ -1,0 +1,59 @@
+{% extends "base.html" %}
+
+{% block form %}
+<form method="get">
+  <label>Article
+    <select name="title">
+      {% for t in titles %}<option {% if t == title %}selected{% endif %}>{{ t }}</option>{% endfor %}
+    </select>
+  </label>
+  <label>As of (UTC)
+    <input type="datetime-local" name="at" value="{{ moment.strftime('%Y-%m-%dT%H:%M') }}">
+  </label>
+  <button type="submit">Travel</button>
+</form>
+{% endblock %}
+
+{% block main %}
+<main>
+  <article>
+    {% if not titles %}
+      <p>No articles loaded yet. Run <code>python -m timemachine.fetch</code> and <code>python -m timemachine.load</code>.</p>
+    {% elif not version %}
+      <h2>{{ title }}</h2>
+      <p>This article did not exist yet on {{ moment.strftime('%d %B %Y') }}, as far as the loaded history goes.</p>
+    {% else %}
+      <h2>{{ title }}</h2>
+      <div class="meta">
+        As it stood on <strong>{{ moment.strftime('%d %B %Y, %H:%M') }}</strong> UTC.<br>
+        This version was live from {{ version.sys_start.strftime('%d %b %Y %H:%M') }}
+        {% if version.sys_end.year < 2100 %}until {{ version.sys_end.strftime('%d %b %Y %H:%M') }}{% else %}and is the current one{% endif %}.<br>
+        Revision <a href="https://en.wikipedia.org/w/index.php?oldid={{ version.rev_id }}">{{ version.rev_id }}</a>
+        by {{ version.editor or "(hidden)" }}{% if version.edit_comment %}: “{{ version.edit_comment }}”{% endif %}<br>
+        <a href="{{ url_for('compare', title=title, **{'from': moment.strftime('%Y-%m-%dT%H:%M')}) }}">Compare with today →</a>
+      </div>
+      {% for p in paragraphs %}
+        {% if p.heading %}<h3>{{ p.text }}</h3>{% else %}<p>{{ p.text }}</p>{% endif %}
+      {% endfor %}
+    {% endif %}
+
+    <details>
+      <summary>The query behind this page</summary>
+      <pre>{{ query }}</pre>
+    </details>
+  </article>
+
+  <aside>
+    <h3>Stored versions ({{ versions|length }})</h3>
+    <ol>
+      {% for v in versions %}
+        <li {% if version and v.rev_id == version.rev_id %}class="current"{% endif %}>
+          <a href="?title={{ title|urlencode }}&at={{ v.sys_start.strftime('%Y-%m-%dT%H:%M:%S') }}">
+            <span>{{ v.sys_start.strftime('%d %b %Y') }}</span><span>{{ '{:,}'.format(v.bytes) }} B</span>
+          </a>
+        </li>
+      {% endfor %}
+    </ol>
+  </aside>
+</main>
+{% endblock %}

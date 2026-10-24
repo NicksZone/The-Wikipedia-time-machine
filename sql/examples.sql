@@ -1,0 +1,42 @@
+-- Example queries to paste into the mariadb client after loading the data.
+--   mariadb -u wiki -p wiki_timemachine
+-- All times are UTC. Run this first so the timestamps below mean UTC:
+SET time_zone = '+00:00';
+
+-- 1. The article as it is now. An ordinary query only sees current rows.
+SELECT p.title, c.rev_id, c.editor, LEFT(c.content, 300) AS start_of_text
+FROM pages p JOIN page_content c USING (page_id)
+WHERE p.title = 'Pluto';
+
+-- 2. The article as it stood on a given day. One clause, no revision table.
+--    Pluto lost its planet status on 2006-08-24: compare a date before and after.
+SELECT c.rev_id, c.sys_start AS version_from, LEFT(c.content, 300) AS start_of_text
+FROM page_content FOR SYSTEM_TIME AS OF TIMESTAMP '2006-06-01 00:00:00' AS c
+JOIN pages p USING (page_id)
+WHERE p.title = 'Pluto';
+
+SELECT c.rev_id, c.sys_start AS version_from, LEFT(c.content, 300) AS start_of_text
+FROM page_content FOR SYSTEM_TIME AS OF TIMESTAMP '2007-01-01 00:00:00' AS c
+JOIN pages p USING (page_id)
+WHERE p.title = 'Pluto';
+
+-- 3. Every stored version of one article, oldest first.
+SELECT c.rev_id, c.editor, c.sys_start, c.sys_end, LENGTH(c.content) AS bytes
+FROM page_content FOR SYSTEM_TIME ALL AS c
+JOIN pages p USING (page_id)
+WHERE p.title = 'Pluto'
+ORDER BY c.sys_start;
+
+-- 4. Versions that were live at some point during 2020.
+SELECT p.title, COUNT(*) AS versions_live_in_2020
+FROM page_content FOR SYSTEM_TIME BETWEEN TIMESTAMP '2020-01-01' AND TIMESTAMP '2020-12-31 23:59:59' AS c
+JOIN pages p USING (page_id)
+GROUP BY p.title
+ORDER BY versions_live_in_2020 DESC;
+
+-- 5. How much is history and how much is current data.
+SELECT
+    SUM(sys_end >  NOW())                          AS current_rows,  -- current rows end at the maximum timestamp
+    SUM(sys_end <= NOW())                          AS history_rows,
+    ROUND(SUM(LENGTH(content)) / 1024 / 1024, 1)   AS text_mb
+FROM page_content FOR SYSTEM_TIME ALL;

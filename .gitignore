@@ -1,0 +1,10 @@
+# Local secrets
+.env
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+
+# Downloaded revision data (re-create with: python -m timemachine.fetch)
+data/raw/

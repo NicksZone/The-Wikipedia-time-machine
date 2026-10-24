@@ -1,0 +1,24 @@
+# The fixed set of Wikipedia articles this project loads.
+# One title per line, exactly as on en.wikipedia.org. Lines starting with # are ignored.
+# Chosen for histories with a visible "before and after" moment.
+
+Pluto
+MariaDB
+MySQL
+SQL
+Wikipedia
+Python (programming language)
+Linux
+IPhone
+Bitcoin
+ChatGPT
+Artificial intelligence
+COVID-19 pandemic
+Brexit
+Barack Obama
+Lionel Messi
+Georgia (country)
+Tbilisi
+Climate change
+Moon
+Chess
