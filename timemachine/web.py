@@ -33,6 +33,10 @@ def sql_time(moment: datetime) -> str:
     return moment.strftime("%Y-%m-%d %H:%M:%S")
 
 
+def iso_utc(moment: datetime) -> str:
+    return moment.strftime("%Y-%m-%dT%H:%M:%SZ")
+
+
 def list_titles(cur) -> list[str]:
     cur.execute(queries.LIST_ARTICLES)
     return [row["title"] for row in cur.fetchall()]
@@ -57,6 +61,15 @@ def index():
     finally:
         conn.close()
 
+    # Everything the timeline scrubber (static/app.js) needs, embedded as JSON.
+    timeline = {
+        "title": title,
+        "moment": iso_utc(moment),
+        "now": iso_utc(parse_moment(None)),
+        "current_rev": version["rev_id"] if version else None,
+        "versions": [{"t": iso_utc(v["sys_start"]), "bytes": v["bytes"], "rev": v["rev_id"]} for v in versions],
+    }
+
     return render_template(
         "index.html",
         titles=titles,
@@ -65,6 +78,7 @@ def index():
         version=version,
         paragraphs=to_paragraphs(version["content"]) if version else [],
         versions=versions,
+        timeline=timeline,
         query=queries.ARTICLE_AS_OF.strip(),
     )
 
