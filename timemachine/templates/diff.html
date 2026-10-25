@@ -3,7 +3,7 @@
 {% block title %}Compare · Wikipedia Time Machine{% endblock %}
 
 {% block form %}
-<form method="get">
+<form method="get" class="controls">
   <label>Article
     <select name="title">
       {% for t in titles %}<option {% if t == title %}selected{% endif %}>{{ t }}</option>{% endfor %}
@@ -30,28 +30,30 @@
     {% elif row.old_rev_id == row.new_rev_id %}
       <p>Both moments show the same stored version (revision {{ row.new_rev_id }}, live from {{ row.new_start.strftime('%d %b %Y') }}), so nothing changed in between.</p>
     {% else %}
-      <div class="meta">
-        From revision <a href="https://en.wikipedia.org/w/index.php?oldid={{ row.old_rev_id }}">{{ row.old_rev_id }}</a>
+      <div class="stamp" style="grid-template-columns: 1fr">
+        <span>From revision <a href="https://en.wikipedia.org/w/index.php?oldid={{ row.old_rev_id }}">{{ row.old_rev_id }}</a>
         (live from {{ row.old_start.strftime('%d %b %Y') }}) to revision
         <a href="https://en.wikipedia.org/w/index.php?oldid={{ row.new_rev_id }}">{{ row.new_rev_id }}</a>
-        (live from {{ row.new_start.strftime('%d %b %Y') }}).
+        (live from {{ row.new_start.strftime('%d %b %Y') }}).</span>
       </div>
-      <div class="stats">
-        <span>{{ result.changed }} paragraphs edited</span>
-        <span>{{ result.added }} added</span>
-        <span>{{ result.removed }} removed</span>
+      <div class="stats reveal">
+        <div class="stat" style="--i: 0"><b data-count="{{ result.changed }}">{{ result.changed }}</b>paragraphs edited</div>
+        <div class="stat add" style="--i: 1"><b data-count="{{ result.added }}">{{ result.added }}</b>added</div>
+        <div class="stat del" style="--i: 2"><b data-count="{{ result.removed }}">{{ result.removed }}</b>removed</div>
       </div>
+      <div class="reveal">
       {% for b in result.blocks %}
         {% if b.kind == 'same' %}
-          <div class="same">{{ b.count }} unchanged paragraph{{ 's' if b.count != 1 }}</div>
+          <div class="same" style="--i: {{ loop.index0 }}">{{ b.count }} unchanged paragraph{{ 's' if b.count != 1 }}</div>
         {% elif b.kind == 'added' %}
-          <p class="added">{{ b.para.text }}</p>
+          <p class="added" style="--i: {{ loop.index0 }}">{{ b.para.text }}</p>
         {% elif b.kind == 'removed' %}
-          <p class="removed">{{ b.para.text }}</p>
+          <p class="removed" style="--i: {{ loop.index0 }}">{{ b.para.text }}</p>
         {% else %}
-          <{{ 'h3' if b.heading else 'p' }}>{% for kind, text in b.parts %}{% if kind == 'ins' %}<ins>{{ text }}</ins>{% elif kind == 'del' %}<del>{{ text }}</del>{% else %}{{ text }}{% endif %}{% endfor %}</{{ 'h3' if b.heading else 'p' }}>
+          <{{ 'h3' if b.heading else 'p' }} style="--i: {{ loop.index0 }}">{% for kind, text in b.parts %}{% if kind == 'ins' %}<ins>{{ text }}</ins>{% elif kind == 'del' %}<del>{{ text }}</del>{% else %}{{ text }}{% endif %}{% endfor %}</{{ 'h3' if b.heading else 'p' }}>
         {% endif %}
       {% endfor %}
+      </div>
     {% endif %}
 
     <details>
@@ -60,4 +62,8 @@
     </details>
   </article>
 </main>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='app.js') }}"></script>
 {% endblock %}

@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 
 {% block form %}
-<form method="get">
+<form method="get" id="travel-form" class="controls">
   <label>Article
     <select name="title">
       {% for t in titles %}<option {% if t == title %}selected{% endif %}>{{ t }}</option>{% endfor %}
@@ -15,45 +15,59 @@
 {% endblock %}
 
 {% block main %}
+{% if titles %}
+<div class="timeline-wrap">
+  <div class="timeline" id="timeline" tabindex="0" role="slider"
+       aria-label="Moment in the article's history. Arrow keys jump between stored versions."></div>
+  <div class="timeline-hint">
+    <span>Drag or click to travel · <kbd>←</kbd> <kbd>→</kbd> step through versions</span>
+    <span id="timeline-count">{{ versions|length }} stored versions</span>
+  </div>
+</div>
+{% endif %}
+
 <main>
-  <article>
-    {% if not titles %}
-      <p>No articles loaded yet. Run <code>python -m timemachine.fetch</code> and <code>python -m timemachine.load</code>.</p>
-    {% elif not version %}
-      <h2>{{ title }}</h2>
-      <p>This article did not exist yet on {{ moment.strftime('%d %B %Y') }}, as far as the loaded history goes.</p>
-    {% else %}
-      <h2>{{ title }}</h2>
-      <div class="meta">
-        As it stood on <strong>{{ moment.strftime('%d %B %Y, %H:%M') }}</strong> UTC.<br>
-        This version was live from {{ version.sys_start.strftime('%d %b %Y %H:%M') }}
-        {% if version.sys_end.year < 2100 %}until {{ version.sys_end.strftime('%d %b %Y %H:%M') }}{% else %}and is the current one{% endif %}.<br>
-        Revision <a href="https://en.wikipedia.org/w/index.php?oldid={{ version.rev_id }}">{{ version.rev_id }}</a>
-        by {{ version.editor or "(hidden)" }}{% if version.edit_comment %}: “{{ version.edit_comment }}”{% endif %}<br>
-        <a href="{{ url_for('compare', title=title, **{'from': moment.strftime('%Y-%m-%dT%H:%M')}) }}">Compare with today →</a>
-      </div>
-      {% for p in paragraphs %}
-        {% if p.heading %}<h3>{{ p.text }}</h3>{% else %}<p>{{ p.text }}</p>{% endif %}
-      {% endfor %}
-    {% endif %}
+  <div id="content">
+    <article class="reveal">
+      {% if not titles %}
+        <div class="empty">
+          <p class="big">No articles loaded yet</p>
+          <p>Run <code>python -m timemachine.fetch</code> and <code>python -m timemachine.load</code>.</p>
+        </div>
+      {% elif not version %}
+        <h2>{{ title }}</h2>
+        <div class="stamp">
+          <span class="year" data-year>{{ moment.year }}</span>
+          <span><strong>Before its time.</strong> This article did not exist yet on {{ moment.strftime('%d %B %Y') }}, as far as the loaded history goes.</span>
+          <span>Drag the timeline to the right to find its first version.</span>
+        </div>
+      {% else %}
+        <h2>{{ title }}</h2>
+        <div class="stamp">
+          <span class="year" data-year>{{ moment.year }}</span>
+          <span>As it stood on <strong>{{ moment.strftime('%d %B %Y, %H:%M') }}</strong> UTC
+            {% if version.sys_end.year >= 2100 %}<span class="badge">current</span>{% endif %}</span>
+          <span>Live from {{ version.sys_start.strftime('%d %b %Y') }}
+            {% if version.sys_end.year < 2100 %}until {{ version.sys_end.strftime('%d %b %Y') }}{% else %}until now{% endif %}
+            · revision <a href="https://en.wikipedia.org/w/index.php?oldid={{ version.rev_id }}">{{ version.rev_id }}</a>
+            by {{ version.editor or "(hidden)" }}</span>
+          <span><a href="{{ url_for('compare', title=title, **{'from': moment.strftime('%Y-%m-%dT%H:%M')}) }}">Compare with today →</a></span>
+        </div>
+        {% for p in paragraphs %}
+          {% if p.heading %}<h3 style="--i: {{ loop.index0 }}">{{ p.text }}</h3>{% else %}<p style="--i: {{ loop.index0 }}">{{ p.text }}</p>{% endif %}
+        {% endfor %}
+      {% endif %}
 
-    <details>
-      <summary>The query behind this page</summary>
-      <pre>{{ query }}</pre>
-    </details>
-  </article>
-
-  <aside>
-    <h3>Stored versions ({{ versions|length }})</h3>
-    <ol>
-      {% for v in versions %}
-        <li {% if version and v.rev_id == version.rev_id %}class="current"{% endif %}>
-          <a href="?title={{ title|urlencode }}&at={{ v.sys_start.strftime('%Y-%m-%dT%H:%M:%S') }}">
-            <span>{{ v.sys_start.strftime('%d %b %Y') }}</span><span>{{ '{:,}'.format(v.bytes) }} B</span>
-          </a>
-        </li>
-      {% endfor %}
-    </ol>
-  </aside>
+      <details>
+        <summary>The query behind this page</summary>
+        <pre>{{ query }}</pre>
+      </details>
+    </article>
+  </div>
 </main>
+<script type="application/json" id="timeline-data">{{ timeline|tojson }}</script>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='app.js') }}"></script>
 {% endblock %}
